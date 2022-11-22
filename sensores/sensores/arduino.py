@@ -5,6 +5,8 @@ from rclpy.node import Node
 import serial
 import threading
 
+from std_msgs.msg import String
+
 class ArduinoPublisher(Node):
     
     def __init__(self):
@@ -13,12 +15,15 @@ class ArduinoPublisher(Node):
         super().__init__('arduino_publisher')
     
         #Argumentos que crean la lectura del puerto serial.
-        self.port = serial.Serial('/dev/ttyACM0',115200,timeout=1)
+        self.port = serial.Serial('/dev/ttyACM0',9600,timeout=1)
         self.port.reset_input_buffer()
 
+        #Diccionario de sensores.
+        self.sensores = {}
+
+        self.publisher_ = self.create_publisher( String, 'sensores_lecturas', 10) 
         timer_period = 0.5  # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback)
-        self.i = 0
         self.get_logger().info("init")
 
     def read_sensor_package(self,bytes_serial):
@@ -38,7 +43,7 @@ class ArduinoPublisher(Node):
         if bytes_serial[0] == 0x59 and bytes_serial[1] == 0x59:  # check for 'YY'
             # print(bytes_serial)
             sensor_index = bytes_serial[2]
-            reading = bytes_serial[3]+bytes_serial[4]* 256
+            reading = bytes_serial[3]+bytes_serial[4]
             return sensor_index, reading
         else:
             return -1, 0
@@ -55,24 +60,24 @@ class ArduinoPublisher(Node):
         sensor_index = 0
         sensor_reading = 0
 
-        sensores = {}
-
         contador = self.port.in_waiting
         bytes_to_read = 5   
 
         if contador > bytes_to_read - 1:
             
             bytes_serial = self.port.read(bytes_to_read)
-            # ser.reset_input_buffer()  # reset buffer
 
             sensor_index, sensor_reading = self.read_sensor_package(bytes_serial)
 
         if sensor_index >= 0:
-            if sensor_index not in sensores:
-                sensores[sensor_index] = 0
+            if sensor_index not in self.sensores:
+                self.sensores[sensor_index] = 0
             if sensor_reading > 0:
-                sensores[sensor_index]=sensor_reading
-                print(sensores)
+                self.sensores[sensor_index]=sensor_reading
+                msg = String()
+                msg.data = str(self.sensores)
+                self.publisher_.publish(msg)
+                #print(self.sensores)
             
 def main(args=None):
     rclpy.init(args=args)

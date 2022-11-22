@@ -20,7 +20,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'arduino = sensores.arduino:main'
+            'arduino = sensores.arduino:main',
+            'probabilidad= sensores.probabilidad:main'
         ],
     },
 )
