@@ -21,7 +21,8 @@ setup(
     entry_points={
         'console_scripts': [
             'arduino = sensores.arduino:main',
-            'probabilidad= sensores.probabilidad:main'
+            'probabilidad= sensores.probabilidad:main',
+            'sus_vel= sensores.sus_vel:main'
         ],
     },
 )
