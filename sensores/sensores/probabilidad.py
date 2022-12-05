@@ -22,7 +22,7 @@ class Suscriptor_Arduino(Node):
         self.timer = time.perf_counter()
 
         #Lista para tener nuestras lecturas de sensores en tiempo constante.
-        self.lecturas = []
+        self.lecturas = [0,1,2,3,4,5]
 
 
         #Nuestro topico publisher que da la ubicación del robot.
@@ -59,8 +59,8 @@ class Suscriptor_Arduino(Node):
 
         contador = 0
         for i in range(len(msg)):
-            if i == ":":
-                self.lecturas[contador] = msg[i+1]
+            if msg[i] == ":":
+                self.lecturas[contador] = msg[i+2]
                 contador += 1
 
 
