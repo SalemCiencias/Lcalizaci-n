@@ -1,5 +1,7 @@
 import rclpy
 from rclpy.node import Node
+import numpy as np
+import time
 
 from std_msgs.msg import String
 
@@ -16,6 +18,13 @@ class Suscriptor_Arduino(Node):
             10)
         self.sub_sensors
 
+        #Timer para procesar los mensajes recibidos de algunos topicos.
+        self.timer = time.perf_counter()
+
+        #Lista para tener nuestras lecturas de sensores en tiempo constante.
+        self.lecturas = []
+
+
         #Nuestro topico publisher que da la ubicación del robot.
         self.publisher_ = self.create_publisher( String, 'locate', 10)
         timer_period = 0.5  # seconds
@@ -30,13 +39,68 @@ class Suscriptor_Arduino(Node):
         self.sub_odom
 
         self.get_logger().info("init")
-        
 
+        self.medias = np.zeros((3,8,6))
+        
     
+    def crea_lista(self,msg):
+        """
+        Función que del mensaje, actualiza nuestra lista para tener las lecturas más recientes de los sensores.
+
+        Parameters
+        -----------
+        msg: String.
+        La cadena con la información de nuestro topic.
+
+        Return
+        -----------
+        None.
+        """      
+
+        contador = 0
+        for i in range(len(msg)):
+            if i == ":":
+                self.lecturas[contador] = msg[i+1]
+                contador += 1
+
+
     def listener_sensors(self, msg):
+        """
+        Función que procesa los mensajes recibidos del topico de sensores.
+
+        Parameters
+        ---------
+        msg: String
+        La cadena con la información'recibida del topic.
+
+        Return
+        --------
+        None.
+        """
         self.get_logger().info('Las mediciones son "%s"' % msg.data)
 
+        timer2 = time.perf_counter()
+        if timer2-timer > 10:
+            self.crea_lista(msg.data)
+            self.timer = time.perf_counter()
+        
+        
+
+
     def listener_odom(self,msg):
+        """
+        Función que procesará los mensajes obtenidos del odometro.
+
+        Parameters
+        -----------
+        msg: String.
+        Nuestra información del odometro.
+
+        Return
+        -----------
+        None.
+
+        """
         self.get_logger().info('el odometro')
 
     def pub_locate(self):
