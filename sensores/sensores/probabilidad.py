@@ -20,10 +20,10 @@ class Suscriptor_Arduino(Node):
         self.sub_sensors
 
         #Timer para procesar los mensajes recibidos de algunos topicos.
-        self.time_al = time.perf_counter()
+        self.times_lec = 0
 
         #Lista para tener nuestras lecturas de sensores en tiempo constante.
-        self.lecturas = [0,1,2,3,4,5]
+        self.lecturas = [0,0,0,0,0,0]
 
 
         #Nuestro topico publisher que da la ubicación del robot.
@@ -39,19 +39,12 @@ class Suscriptor_Arduino(Node):
             10)
         self.sub_odom
 
-        self.get_logger().info("init")
+        print("init")
 
         #Nuestras matrices relevantes para la distribución de proba y la media.
         new_arr = np.array([[[307,40,51,0,145,22],[53,50,190,96,21,0],[45,188,172,22,0,0],[125,176,120,0,0,50],[164,20,26,0,0,46],[92,22,0,0,49,97],[17,20,0,52,256,163],[84,0,55,192,100,20]],[[50,155,130,100,89,157],[72,100,158,108,0,0],[76,150,0,167,47,0],[110,0,0,90,0,86],[50,0,0,0,154,111],[103,0,0,138,95,155],[60,93,0,47,123,192],[59,0,100,145,177,0]],[[46,0,169,104,157,200],[96,142,212,125,125,80],[130,232,153,240,115,46],[175,100,172,121,46,215],[64,177,146,45,200,142],[72,350,87,100,147,213],[107,80,81,145,225,145],[65,81,162,214,100,183]]])
         self.medias = new_arr.reshape(3,8,6)
         self.dist = np.zeros((3,8,6))
-
-        ##Asigna la misma probabilidad a todas las mediciones
-        prob = 1 / 144
-        for index1 in range(3):
-            for index2 in range(8):
-                for index3 in range(6):
-                    self.dist[index1][index2][index3] = prob
 
         #La información de dónde está nuestro robot.
         self.a = 0.0
@@ -73,49 +66,14 @@ class Suscriptor_Arduino(Node):
         None.
 
         """
-        if self.aux == 100:
-            self.calculo_Propabilidad()
+        if self.aux == 20:
+            self.calculo_Probabilidad()
+            ms = String()
+            ms.data = "({},{})".format(self.a,self.b)
+            self.publisher_.publish(ms)
+            print(ms.data)
             self.aux = 0
-        ms = String()
-        ms.data = "({},{})".format(self.a,self.b)
-        self.publisher_.publish(ms)
-        print(ms.data)
         self.aux += 1
-
-    def normaliza(self,constante):
-        """
-        Función que normaliza nuestra creencia, solo le pasamos la constante.
-
-        Parameters
-        -----------
-        constante: int.
-        Constante que utilizamos en nuestros calculos.
-
-        Return
-        ----------
-        None
-        """  
-        for index1 in range(3):
-            for index2 in range(8):
-                for index3 in range(6):
-                    self.dist[index1][index2][index3] = pow(constante, -1) * self.dist[index1][index2][index3]
-    
-    def proba_inicial(self,constante):
-        """
-        Función que calcula la proba de que el robot esté en cualquier casilla al principio.
-
-        Parameters
-        -----------
-        constante:float.
-        Una variable auxiliar.
-        """
-        for index1 in range(3):
-            for index2 in range(8):
-                for index3 in range(6):
-                    self.dist[index1][index2][index3] = ((1 / (math.sqrt(2 * math.pi) * 9.81)) * pow(math.e, (- pow(self.lecturas[index3]- self.medias[index1][index2][index3],2)) / 2* pow(9.81, 2))) * self.dist[index1][index2][index3]
-                    constante = constante + self.dist[index1][index2][index3]
-        return constante
-        
 
     def calculo_Probabilidad(self):
         """
@@ -130,19 +88,25 @@ class Suscriptor_Arduino(Node):
         None.
 
         """
-
+        prob = 1 / 144
+        for index1 in range(3):
+            for index2 in range(8):
+                for index3 in range(6):
+                    self.dist[index1][index2][index3] = prob
 
         ##Calcula la probabilidad de que el robot este en todas las posibles posiciones 
-        constante = 0.0
+        constante = 0
         for index1 in range(3):
             for index2 in range(8):
                 for index3 in range(6):
                     self.dist[index1][index2][index3] = ((1 / (math.sqrt(2 * math.pi) * 9.81)) * pow(math.e, (- pow(self.lecturas[index3]- self.medias[index1][index2][index3],2)) / 2* pow(9.81, 2))) * self.dist[index1][index2][index3]
                     constante = constante + self.dist[index1][index2][index3]   
 
-        #self.proba_inicial(0.0)
-
-        self.normaliza(constante)
+        ##Se normaliza la creencia
+        for index1 in range(3):
+            for index2 in range(8):
+                for index3 in range(6):
+                    self.dist[index1][index2][index3] = pow(constante, -1) * self.dist[index1][index2][index3]
 
         ##Se calcula la probabilidad para las 8 posibles rotaciones de cada celda multiplicando la probabilidad de cada sonar 
         arr_prob_celdas = np.zeros((3,8))
@@ -155,21 +119,19 @@ class Suscriptor_Arduino(Node):
                 arr_prob_celdas[index1][index2] = proba
 
         ##Se encuentra la posicion de mayor probabilidad
-        contador1_indice = 0.0
-        contador2_indice = 0.0 
-        contador = 0.0
+        contador1_indice = 0
+        contador2_indice = 0
+        contador = 0
         for index1 in range(3):
             for index2 in range(8):
                 if contador <= arr_prob_celdas[index1][index2]:
-                    contador1_indice = index1
-                    contador2_indice = index2
-                    contador = arr_prob_celdas[index1][index2]
+                                contador1_indice = index1
+                                contador2_indice = index2
+                                contador = arr_prob_celdas[index1][index2]
                         
         ##Aqui el da el valor a la información para ser publicada por el topic.
         self.a = contador1_indice
-        self.b = contador2_indice 
-
-        self.pub_locate()     
+        self.b = contador2_indice      
     
     def crea_lista(self,msg):
         """
@@ -188,7 +150,7 @@ class Suscriptor_Arduino(Node):
         contador = 0
         for i in range(len(msg)):
             if msg[i] == ":":
-                self.lecturas[contador] = msg[i+2]
+                self.lecturas[contador] = int(msg[i+2])
                 contador += 1
 
 
@@ -205,12 +167,10 @@ class Suscriptor_Arduino(Node):
         --------
         None.
         """
-        #self.get_logger().info('Las mediciones son "%s"' % msg.data)
-
-        timer2 = time.perf_counter()
-        if timer2-self.time_al > 10:
+        if self.times_lec == 10:
             self.crea_lista(msg.data)
-            self.timer = time.perf_counter()
+            self.times_lec = 0
+        self.times_lec += 1
 
     def listener_odom(self):
         """
@@ -224,7 +184,7 @@ class Suscriptor_Arduino(Node):
         -----------
         None
         """
-        self.get_logger().info("Odometro")
+        print("Odometro")
         
     
 def main(args=None):
