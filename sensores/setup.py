@@ -13,10 +13,10 @@ setup(
     ],
     install_requires=['setuptools'],
     zip_safe=True,
-    maintainer='tolot',
-    maintainer_email='tolot@todo.todo',
-    description='TODO: Package description',
-    license='TODO: License declaration',
+    maintainer='AndreJuan',
+    maintainer_email='juan567@ciencias.unam.mx/andrebarra@ciencias.unam.mx',
+    description='Paquete para manejar los sensores físicos.',
+    license='Apache License 2.0',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
