@@ -25,7 +25,7 @@ class Suscriptor_Arduino(Node):
         self.times_lec = 0
 
         #Lista para tener nuestras lecturas de sensores en tiempo constante.
-        self.lecturas = [0,0,0,0,0,0]
+        self.lecturas = [164,20,26,0,0,46]
 
 
         #Nuestro topico publisher que da la ubicación del robot.
@@ -205,10 +205,11 @@ class Suscriptor_Arduino(Node):
         --------
         None.
         """
-        if self.times_lec == 3:
+        """if self.times_lec == 3:
             self.crea_lista(msg.data)
             self.times_lec = 0
-        self.times_lec += 1
+        self.times_lec += 1"""
+        print(self.lecturas)
 
     def listener_odom(self):
         """
