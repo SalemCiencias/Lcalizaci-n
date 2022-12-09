@@ -4,7 +4,7 @@
   <name>sensores</name>
   <version>0.0.0</version>
   <description>Module to work with Arduino physical sensors.</description>
-  <maintainer email="juan567@ciencias.unam.mx;andrebarra@ciencias.unam.mx">tolot</maintainer>
+  <maintainer email="juan567@ciencias.unam.mx;andrebarra@ciencias.unam.mx">AndreJuan</maintainer>
   <license>Apache License 2.0</license>
 
   <test_depend>ament_copyright</test_depend>
