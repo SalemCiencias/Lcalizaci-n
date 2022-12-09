@@ -3,6 +3,8 @@ from rclpy.node import Node
 import numpy as np
 import time
 import math
+from collections import Counter
+from decimal import *
 
 from std_msgs.msg import String
 
@@ -52,6 +54,8 @@ class Suscriptor_Arduino(Node):
 
         self.aux = 0
 
+        self.arr = np.zeros((20,6))
+
     def pub_locate(self):
         """
         Función que publicará los mensajes obtenidos de la probabilidad.
@@ -67,15 +71,28 @@ class Suscriptor_Arduino(Node):
 
         """
         if self.aux == 20:
-            self.calculo_Probabilidad()
+            self.calculo_Probabilidad(self.media1(self.arr))
             ms = String()
             ms.data = "({},{})".format(self.a,self.b)
             self.publisher_.publish(ms)
             print(ms.data)
             self.aux = 0
-        self.aux += 1
+        else:
+            for index1 in range(6):
+                self.arr[self.aux][index1] = self.lecturas[index1]
+            self.aux += 1
 
-    def calculo_Probabilidad(self):
+    def media1(self, lista):
+        aux = [0,0,0,0,0,0] 
+        for index2 in range(6):
+            moda = []
+            for index1 in range(self.aux):
+                moda.append(lista[index1][index2])
+            counter = Counter(moda)
+            aux[index2] = counter.most_common(1)[0][0]
+        return lista
+
+    def calculo_Probabilidad(self, lectures):
         """
         Función que resuelve el problema de dónde se encuentra nuestro robot dadas las mediciones de nuestros sensores.
 
@@ -99,7 +116,9 @@ class Suscriptor_Arduino(Node):
         for index1 in range(3):
             for index2 in range(8):
                 for index3 in range(6):
-                    self.dist[index1][index2][index3] = ((1 / (math.sqrt(2 * math.pi) * 9.81)) * pow(math.e, (- pow(self.lecturas[index3]- self.medias[index1][index2][index3],2)) / 2* pow(9.81, 2))) * self.dist[index1][index2][index3]
+                    self.dist[index1][index2][index3] = ((1 / (math.sqrt(2 * math.pi) * 25)) * pow(math.e, (- pow(self.lecturas[index3]- self.medias[index1][index2][index3],2)) / 2* pow(25, 2))) * self.dist[index1][index2][index3]
+                    if self.dist[index1][index2][index3] == 0:
+                        self.dist[index1][index2][index3] = .01
                     constante = constante + self.dist[index1][index2][index3]   
 
         ##Se normaliza la creencia
@@ -110,6 +129,12 @@ class Suscriptor_Arduino(Node):
 
         ##Se calcula la probabilidad para las 8 posibles rotaciones de cada celda multiplicando la probabilidad de cada sonar 
         arr_prob_celdas = np.zeros((3,8))
+        aux1234 = 1 / 24
+        for index1 in range(3):
+            for index2 in range(8):
+                arr_prob_celdas[index1][index2] = aux1234
+
+        constante2 = 0
         for index1 in range(3):
             for index2 in range(8):
                 proba = 1
@@ -117,19 +142,27 @@ class Suscriptor_Arduino(Node):
                     proba = proba * self.dist[index1][index2][index3]
                 
                 arr_prob_celdas[index1][index2] = proba
+                constante2 += proba
+
+        for index1 in range(3):
+            for index2 in range(8):
+                arr_prob_celdas[index1][index2] = pow(constante2, -1) * arr_prob_celdas[index1][index2]
 
         ##Se encuentra la posicion de mayor probabilidad
         contador1_indice = 0
         contador2_indice = 0
-        contador = 0
+        contador = 0.0
         for index1 in range(3):
             for index2 in range(8):
-                if contador <= arr_prob_celdas[index1][index2]:
+                ##print(f"celda: {index1}, rotacion: {index2}: {(arr_prob_celdas[index1][index2] * 1000000000000000000000)}")
+                if Decimal(contador) <= Decimal(arr_prob_celdas[index1][index2]):
                                 contador1_indice = index1
                                 contador2_indice = index2
-                                contador = arr_prob_celdas[index1][index2]
+                                contador = Decimal(arr_prob_celdas[index1][index2])
                         
         ##Aqui el da el valor a la información para ser publicada por el topic.
+        print(contador)
+        print(self.lecturas)
         self.a = contador1_indice
         self.b = contador2_indice      
     
@@ -150,10 +183,15 @@ class Suscriptor_Arduino(Node):
         contador = 0
         for i in range(len(msg)):
             if msg[i] == ":":
-                self.lecturas[contador] = int(msg[i+2])
-                contador += 1
-
-
+                aux = ""
+                if msg[i+2]!=" " and msg[i+2]!=",":
+                    aux = aux+msg[i+2]
+                if msg[i+3]!=" " and msg[i+3]!="," and msg[i+3]!="}":
+                    aux = aux+msg[i+3]
+                if msg[i+4]!=" " and msg[i+4]!="," and msg[i+4]!="}":
+                    aux = aux+msg[i+4]
+                self.lecturas[contador] = int(aux)
+                contador +=1
     def listener_sensors(self, msg):
         """
         Función que procesa los mensajes recibidos del topico de sensores.
@@ -167,7 +205,7 @@ class Suscriptor_Arduino(Node):
         --------
         None.
         """
-        if self.times_lec == 10:
+        if self.times_lec == 3:
             self.crea_lista(msg.data)
             self.times_lec = 0
         self.times_lec += 1
